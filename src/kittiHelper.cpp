@@ -65,16 +65,42 @@ int main(int argc, char** argv)
     nav_msgs::Path pathGT;
     pathGT.header.frame_id = "/camera_init";
 
-    std::string timestamp_path = "sequences/" + sequence_number + "/times.txt";
+    // 图片的时间戳
+    std::cout<<"aa"<<std::endl;
+    std::string timestamp_path = "data_odometry_gray/" + sequence_number + "/times.txt";
     std::ifstream timestamp_file(dataset_folder + timestamp_path, std::ifstream::in);
+    if(!timestamp_file)
+    {
+        std::cout<<"fail open "<<dataset_folder<< timestamp_path<<std::endl;
+        return 0;
+    }
+    else
+    {
+        std::cout<<"open "<<dataset_folder<< timestamp_path<<std::endl;
+    }
+    
 
-    std::string ground_truth_path = "results/" + sequence_number + ".txt";
+    // ground truth 
+    std::string ground_truth_path = "groundtruth/poses/" + sequence_number + ".txt";
     std::ifstream ground_truth_file(dataset_folder + ground_truth_path, std::ifstream::in);
+
+    if(!ground_truth_file)
+    {
+        std::cout<<"fail open "<<dataset_folder<< ground_truth_path<<std::endl;
+        return 0;
+    }
+    else
+    {
+        std::cout<<"open "<<dataset_folder<< ground_truth_path<<std::endl; 
+    }
+    
 
     rosbag::Bag bag_out;
     if (to_bag)
         bag_out.open(output_bag_file, rosbag::bagmode::Write);
     
+
+    //坐标系方向
     Eigen::Matrix3d R_transform;
     R_transform << 0, 0, 1, -1, 0, 0, 0, -1, 0;
     Eigen::Quaterniond q_transform(R_transform);
@@ -85,13 +111,15 @@ int main(int argc, char** argv)
     ros::Rate r(10.0 / publish_delay);
     while (std::getline(timestamp_file, line) && ros::ok())
     {
+        // 读取图片
         float timestamp = stof(line);
         std::stringstream left_image_path, right_image_path;
-        left_image_path << dataset_folder << "sequences/" + sequence_number + "/image_0/" << std::setfill('0') << std::setw(6) << line_num << ".png";
+        left_image_path << dataset_folder << "data_odometry_gray/" + sequence_number + "/image_0/" << std::setfill('0') << std::setw(6) << line_num << ".png";
         cv::Mat left_image = cv::imread(left_image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
-        right_image_path << dataset_folder << "sequences/" + sequence_number + "/image_1/" << std::setfill('0') << std::setw(6) << line_num << ".png";
-        cv::Mat right_image = cv::imread(left_image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
+        right_image_path << dataset_folder << "data_odometry_gray/" + sequence_number + "/image_1/" << std::setfill('0') << std::setw(6) << line_num << ".png";
+        cv::Mat right_image = cv::imread(right_image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
 
+        // 读取ground truth
         std::getline(ground_truth_file, line);
         std::stringstream pose_stream(line);
         std::string s;
@@ -109,6 +137,7 @@ int main(int argc, char** argv)
         Eigen::Quaterniond q = q_transform * q_w_i;
         q.normalize();
         Eigen::Vector3d t = q_transform * gt_pose.topRightCorner<3, 1>();
+
 
         odomGT.header.stamp = ros::Time().fromSec(timestamp);
         odomGT.pose.pose.orientation.x = q.x();
@@ -129,7 +158,7 @@ int main(int argc, char** argv)
 
         // read lidar point cloud
         std::stringstream lidar_data_path;
-        lidar_data_path << dataset_folder << "velodyne/sequences/" + sequence_number + "/velodyne/" 
+        lidar_data_path << dataset_folder << "data_odometry_velodyne/" + sequence_number + "/velodyne/" 
                         << std::setfill('0') << std::setw(6) << line_num << ".bin";
         std::vector<float> lidar_data = read_lidar_data(lidar_data_path.str());
         std::cout << "totally " << lidar_data.size() / 4.0 << " points in this lidar frame \n";

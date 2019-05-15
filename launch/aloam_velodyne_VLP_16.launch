@@ -22,5 +22,8 @@
     <group if="$(arg rviz)">
         <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find aloam_velodyne)/rviz_cfg/aloam_velodyne.rviz" />
     </group>
+     <node pkg="rosbag" type="play" name="play" args="--clock  /home/cbin/1号车52为了测试中德瑞博见图效果.bag "  >
+        <remap from="/imu" to="/imu/data"/>
+    </node>
 
 </launch>
